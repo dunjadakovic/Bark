@@ -116,6 +116,7 @@ class Block(nn.Module):
         self.ln_1 = LayerNorm(config.n_embd, bias=config.bias)
         self.attn = CausalSelfAttention(config)
         self.ln_2 = LayerNorm(config.n_embd, bias=config.bias)
+        self.ln_3 = LayerNorm(config.n_embd, bias= config.bias)
         self.mlp = MLP(config)
         self.layer_idx = layer_idx
 
@@ -153,6 +154,32 @@ class GPT(nn.Module):
             ln_f = LayerNorm(config.n_embd, bias=config.bias),
         ))
         self.lm_head = nn.Linear(config.n_embd, config.output_vocab_size, bias=False)
+
+         def __init__(self, config):
+        super().__init__()
+        assert config.input_vocab_size is not None
+        assert config.output_vocab_size is not None
+        assert config.block_size is not None
+        self.config = config
+
+        self.transformer = nn.ModuleDict(dict(
+            wte = nn.Embedding(config.input_vocab_size, config.n_embd),
+            wpe = nn.Embedding(config.block_size, config.n_embd),
+            drop = nn.Dropout(config.dropout),
+            h = nn.ModuleList([Block(config, idx) for idx in range(config.n_layer)]),
+            ln_f = LayerNorm(config.n_embd, bias=config.bias),
+        ))
+        self.lm_head = nn.Linear(config.n_embd, config.output_vocab_size, bias=False)
+        
+    def forward(self, x, mask):
+        x = self.token_embedding(x)
+        x = x + self.positional_embedding
+        for transformer in self.transformer:
+            x = transformer(x, mask)
+        x = self.fc(x)
+        # Adding the new layer to the forward pass
+        x = self.new_layer(x)
+        return x
 
     def get_num_params(self, non_embedding=True):
         """
