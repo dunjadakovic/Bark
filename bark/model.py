@@ -155,7 +155,7 @@ class GPT(nn.Module):
         ))
         self.lm_head = nn.Linear(config.n_embd, config.output_vocab_size, bias=False)
 
-         def __init__(self, config):
+    def __init__(self, config):
         super().__init__()
         assert config.input_vocab_size is not None
         assert config.output_vocab_size is not None
@@ -250,3 +250,16 @@ class GPT(nn.Module):
         logits = self.lm_head(x[:, [-1], :]) # note: using list [-1] to preserve the time dim
 
         return (logits, new_kv)
+
+class Extra_Layer(nn.Module):
+    def __init__(self, config):
+        super().__init__()
+        self.normalising    = nn.Linear(config.n_embd, 4 * config.n_embd, bias=config.bias)
+        self.normalise  = nn.Linear(4 * config.n_embd, config.n_embd, bias=config.bias)
+        self.dropout = nn.Dropout(config.dropout / 2)
+
+    def forward(self, x):
+        x = self.normalising(x)
+        x = self.normalise(x)
+        x = self.dropout(x)
+        return x
